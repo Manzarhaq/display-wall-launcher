@@ -1,0 +1,62 @@
+name: Build Windows
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build self-contained x64 package
+        shell: pwsh
+        run: ./windows/build.ps1
+      - name: Geometry and URL checks
+        shell: pwsh
+        run: |
+          $p = Start-Process dist/windows-x64/DisplayWallLauncher.exe -ArgumentList '--self-test', 'checks.txt' -Wait -PassThru
+          Get-Content checks.txt
+          if ($p.ExitCode -ne 0) { throw 'Focused checks failed' }
+      - name: Ensure WebView2 runtime
+        shell: pwsh
+        run: |
+          $runtime = Get-ChildItem 'C:/Program Files (x86)/Microsoft/EdgeWebView/Application' -ErrorAction SilentlyContinue
+          if (-not $runtime) {
+            Invoke-WebRequest 'https://go.microsoft.com/fwlink/p/?LinkId=2124703' -OutFile "$env:RUNNER_TEMP/WebView2Setup.exe"
+            $p = Start-Process "$env:RUNNER_TEMP/WebView2Setup.exe" -ArgumentList '/silent', '/install' -Wait -PassThru
+            if ($p.ExitCode -ne 0) { throw 'WebView2 runtime installation failed' }
+          }
+      - name: Native WebView2 smoke test
+        shell: pwsh
+        run: |
+          $p = Start-Process dist/windows-x64/DisplayWallLauncher.exe -ArgumentList '--smoke-test', 'smoke.txt' -PassThru
+          if (-not $p.WaitForExit(120000)) { Stop-Process -Id $p.Id; throw 'Smoke test timed out' }
+          Get-Content smoke.txt
+          if ($p.ExitCode -ne 0) { throw 'WebView2 smoke test failed' }
+      - name: Inspect package layout
+        shell: pwsh
+        run: |
+          Expand-Archive dist/Display-Wall-Launcher-Windows-x64.zip -DestinationPath "$env:RUNNER_TEMP/launcher-check"
+          if (-not (Test-Path "$env:RUNNER_TEMP/launcher-check/DisplayWallLauncher.exe")) { throw 'Executable missing' }
+          if (-not (Test-Path "$env:RUNNER_TEMP/launcher-check/WebView2Loader.dll")) { throw 'WebView2 loader missing' }
+          if (-not (Test-Path "$env:RUNNER_TEMP/launcher-check/coreclr.dll")) { throw '.NET runtime missing' }
+          if (Get-ChildItem "$env:RUNNER_TEMP/launcher-check" -Recurse -Include '*.pdb', 'settings.json') { throw 'Unexpected private or debug files' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Windows-x64
+          path: dist/Display-Wall-Launcher-Windows-x64.zip
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Windows-check-results
+          path: |
+            checks.txt
+            smoke.txt
+          if-no-files-found: ignore
