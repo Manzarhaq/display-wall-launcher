@@ -173,6 +173,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     }
     private func startSmoke() {
         if smokeBlank {
+            print("CHECK: bundle=\(Bundle.main.bundleIdentifier ?? "none") addressLength=\(setup.urlField.stringValue.count)")
             finishSmoke(setup.urlField.stringValue.isEmpty, "Initial URL is blank in the independent settings namespace")
             return
         }
