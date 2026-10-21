@@ -72,7 +72,9 @@ internal sealed class SetupForm : Form
         wall = current;
         current.BackRequested += message => { if (wall == current) ReturnToSetup(message); };
         current.QuitRequested += () => Close();
-        current.Show(); current.Bounds = bounds; current.Activate(); Hide();
+        current.Show(); current.Bounds = bounds;
+        if (current.Bounds != bounds) throw new InvalidOperationException("Windows constrained the presentation window. Check display arrangement and scaling.");
+        current.Activate(); Hide();
         await current.LoadAsync(uri);
     }
     private void ReturnToSetup(string message = "Ready. Choose Preview or Present to try again.")

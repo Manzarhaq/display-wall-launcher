@@ -2,7 +2,7 @@ import AppKit
 import WebKit
 
 final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, NSWindowDelegate {
-    private let settings = UserDefaults(suiteName: "io.github.displaywalllauncher")!
+    private let settings = UserDefaults.standard
     private var setup: SetupWindow!
     private var wall: WallWindow?
     private var web: WKWebView?

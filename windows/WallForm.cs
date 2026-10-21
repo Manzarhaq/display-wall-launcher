@@ -44,17 +44,16 @@ internal sealed class WallForm : Form
                     QueueFailure($"Could not load the page ({(e.HttpStatusCode >= 400 ? "HTTP " + e.HttpStatusCode : e.WebErrorStatus.ToString())}). Check the address and network, then preview or present to retry.");
                 else loaded.TrySetResult(true);
             };
-            web.CoreWebView2Controller.AcceleratorKeyPressed += (_,e) =>
+            // WinForms forwards WebView2 accelerator keys through KeyDown.
+            // Queue actions to avoid disposing a webview during its input callback.
+            web.KeyDown += (_,e) =>
             {
-                if (e.KeyEventKind is not (CoreWebView2KeyEventKind.KeyDown or CoreWebView2KeyEventKind.SystemKeyDown)) return;
-                var key = (Keys)e.VirtualKey;
-                var control = (ModifierKeys & Keys.Control) != 0;
-                Action? action = key == Keys.Escape || (control && key == Keys.OemPeriod) ? () => RequestBack() :
-                    control && key == Keys.R ? Reload :
-                    control && key == Keys.Q ? () => QuitRequested?.Invoke() : null;
+                Action? action = e.KeyCode == Keys.Escape || (e.Control && e.KeyCode == Keys.OemPeriod) ? () => RequestBack() :
+                    e.Control && e.KeyCode == Keys.R ? Reload :
+                    e.Control && e.KeyCode == Keys.Q ? () => QuitRequested?.Invoke() : null;
                 if (action is null) return;
-                e.Handled = true;
-                if (!e.PhysicalKeyStatus.WasKeyDown) BeginInvoke(action);
+                e.Handled = true; e.SuppressKeyPress = true;
+                BeginInvoke(action);
             };
             if (address is null)
                 web.NavigateToString("<!doctype html><html><head><title>Display Wall Launcher fixture</title></head><body><h1>Display Wall Launcher fixture</h1><p>Local wrapper validation only.</p></body></html>");

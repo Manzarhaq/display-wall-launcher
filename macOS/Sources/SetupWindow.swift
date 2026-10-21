@@ -57,7 +57,7 @@ final class SetupWindow: NSWindowController {
     func refreshDisplays() {
         let selected = Set(choices.filter { $0.1.state == .on }.map { $0.0.id })
         for view in displays.arrangedSubviews { displays.removeArrangedSubview(view); view.removeFromSuperview() }
-        let stored = Set((UserDefaults(suiteName: "io.github.displaywalllauncher")!.array(forKey: "displayIDs") as? [Int] ?? []).map { UInt32($0) })
+        let stored = Set((UserDefaults.standard.array(forKey: "displayIDs") as? [Int] ?? []).map { UInt32($0) })
         choices = DisplayChoice.available.map { choice in
             let button = NSButton(checkboxWithTitle: choice.label, target: nil, action: nil)
             button.state = (selected.isEmpty ? stored : selected).contains(choice.id) ? .on : .off
